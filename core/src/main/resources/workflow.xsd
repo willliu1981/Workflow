@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://kuan.studio/taskflow/1.0"
+    xmlns="http://kuan.studio/taskflow/1.0"
+    elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <xsd:simpleType name="taskType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="setVar"/>
+            <xsd:enumeration value="log"/>
+            <xsd:enumeration value="branch"/>
+            <xsd:enumeration value="end"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:element name="workflow">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="task" minOccurs="1" maxOccurs="unbounded">
+                    <xsd:complexType>
+                        <xsd:attribute name="id" type="xsd:string" use="required"/>
+                        <xsd:attribute name="type" type="taskType" use="required"/>
+
+                        <!-- setVar -->
+                        <xsd:attribute name="key" type="xsd:string" use="optional"/>
+                        <xsd:attribute name="value" type="xsd:string" use="optional"/>
+
+                        <!-- log -->
+                        <xsd:attribute name="message" type="xsd:string" use="optional"/>
+
+                        <!-- branch -->
+                        <xsd:attribute name="ifEqualsKey" type="xsd:string" use="optional"/>
+                        <xsd:attribute name="ifEqualsValue" type="xsd:string" use="optional"/>
+                        <xsd:attribute name="thenGo" type="xsd:string" use="optional"/>
+                        <xsd:attribute name="elseGo" type="xsd:string" use="optional"/>
+                    </xsd:complexType>
+                </xsd:element>
+            </xsd:sequence>
+
+            <xsd:attribute name="id" type="xsd:string" use="required"/>
+        </xsd:complexType>
+    </xsd:element>
+
+</xsd:schema>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow id="demo" xmlns="http://kuan.studio/taskflow/1.0">
+    <task id="t1" type="setVar" key="user" value="Kuanwei"/>
+    <task id="t2" type="log" message="Hello, ${user}! Start workflow."/>
+    <task id="t3" type="branch"
+        ifEqualsKey="user" ifEqualsValue="Kuanwei"
+        thenGo="vip1" elseGo="normal1"/>
+
+    <task id="vip1" type="log" message="VIP: Today extra practice: ${user}."/>
+    <task id="vip2" type="end"/>
+
+    <task id="normal1" type="log" message="Normal: Do standard practice."/>
+    <task id="normal2" type="end"/>
+</workflow>
