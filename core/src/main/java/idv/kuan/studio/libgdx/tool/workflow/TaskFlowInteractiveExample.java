@@ -26,7 +26,6 @@ public class TaskFlowInteractiveExample {
 
         Workflow workflow = WorkflowLoader.loadFromResources(workflowXmlResourcePath, validationMode);
 
-        // 教學版：用 Console 做互動選擇（未來接 LibGDX 時換成 UI Presenter）
         ChoicePresenter choicePresenter = new ConsoleChoicePresenter();
 
         workflow.run(choicePresenter);
@@ -201,7 +200,7 @@ public class TaskFlowInteractiveExample {
         }
 
         private static InputStream openResourceStream(String resourcePath) {
-            InputStream inputStream = TaskFlowTutorial.class.getClassLoader().getResourceAsStream(resourcePath);
+            InputStream inputStream = TaskFlowInteractiveExample.class.getClassLoader().getResourceAsStream(resourcePath);
             if (inputStream == null) {
                 throw new IllegalStateException("Resource not found in classpath: " + resourcePath);
             }
@@ -251,8 +250,6 @@ public class TaskFlowInteractiveExample {
 
                 ExecutionResult executionResult = execute(currentTask, choicePresenter);
                 if (executionResult.type == ExecutionResultType.WAIT) {
-                    // Console 版 choice 會同步回呼，所以理論上不會走到這裡卡住
-                    // 但保留 WAIT 結構，未來換 LibGDX UI callback 時就會用到
                     currentTaskId = null;
                 } else {
                     currentTaskId = executionResult.nextTaskId;
@@ -265,17 +262,19 @@ public class TaskFlowInteractiveExample {
         private ExecutionResult execute(TaskDefinition taskDefinition, ChoicePresenter choicePresenter) {
             switch (taskDefinition.type) {
 
-                case "setVar":
+                case "setVar": {
                     requireNonBlank(taskDefinition.key, "setVar requires key, taskId=" + taskDefinition.id);
                     variables.put(taskDefinition.key, taskDefinition.value == null ? "" : taskDefinition.value);
                     return ExecutionResult.next(getNextSequentialTaskId(taskDefinition.id));
+                }
 
-                case "log":
+                case "log": {
                     String message = taskDefinition.message == null ? "" : taskDefinition.message;
                     log("[TaskFlow] " + interpolate(message));
                     return ExecutionResult.next(getNextSequentialTaskId(taskDefinition.id));
+                }
 
-                case "choice":
+                case "choice": {
                     requireNonBlank(taskDefinition.key, "choice requires key, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.prompt, "choice requires prompt, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.optionAText, "choice requires optionA, taskId=" + taskDefinition.id);
@@ -297,8 +296,9 @@ public class TaskFlowInteractiveExample {
                     );
 
                     return ExecutionResult.next(nextTaskIdAfterChoice);
+                }
 
-                case "branch":
+                case "branch": {
                     requireNonBlank(taskDefinition.ifEqualsKey, "branch requires ifEqualsKey, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.thenGo, "branch requires thenGo, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.elseGo, "branch requires elseGo, taskId=" + taskDefinition.id);
@@ -307,12 +307,20 @@ public class TaskFlowInteractiveExample {
                     boolean isMatch = actualValue != null && actualValue.equals(taskDefinition.ifEqualsValue);
 
                     return ExecutionResult.next(isMatch ? taskDefinition.thenGo : taskDefinition.elseGo);
+                }
 
-                case "end":
+                case "goto": {
+                    requireNonBlank(taskDefinition.go, "goto requires go, taskId=" + taskDefinition.id);
+                    return ExecutionResult.next(taskDefinition.go);
+                }
+
+                case "end": {
                     return ExecutionResult.end();
+                }
 
-                default:
+                default: {
                     throw new IllegalArgumentException("Unknown task type: " + taskDefinition.type + ", taskId=" + taskDefinition.id);
+                }
             }
         }
 
@@ -401,6 +409,8 @@ public class TaskFlowInteractiveExample {
         public final String optionBText;
         public final String optionBValue;
 
+        public final String go;
+
         private TaskDefinition(
             String id,
             String type,
@@ -415,7 +425,8 @@ public class TaskFlowInteractiveExample {
             String optionAText,
             String optionAValue,
             String optionBText,
-            String optionBValue
+            String optionBValue,
+            String go
         ) {
             this.id = id;
             this.type = type;
@@ -431,6 +442,7 @@ public class TaskFlowInteractiveExample {
             this.optionAValue = optionAValue;
             this.optionBText = optionBText;
             this.optionBValue = optionBValue;
+            this.go = go;
         }
 
         public static TaskDefinition from(Element taskElement) {
@@ -459,6 +471,8 @@ public class TaskFlowInteractiveExample {
             String optionB = getOptionalAttribute(taskElement, "optionB");
             String valueB = getOptionalAttribute(taskElement, "valueB");
 
+            String go = getOptionalAttribute(taskElement, "go");
+
             return new TaskDefinition(
                 id,
                 type,
@@ -473,7 +487,8 @@ public class TaskFlowInteractiveExample {
                 optionA,
                 valueA,
                 optionB,
-                valueB
+                valueB,
+                go
             );
         }
 

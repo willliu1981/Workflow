@@ -21,6 +21,7 @@
             <xs:enumeration value="log"/>
             <xs:enumeration value="branch"/>
             <xs:enumeration value="choice"/>
+            <xs:enumeration value="goto"/>
             <xs:enumeration value="end"/>
         </xs:restriction>
     </xs:simpleType>
@@ -49,6 +50,8 @@
         <xs:attribute name="optionB" type="xs:string" use="optional"/>
         <xs:attribute name="valueB" type="xs:string" use="optional"/>
 
+        <!-- goto -->
+        <xs:attribute name="go" type="xs:string" use="optional"/>
     </xs:complexType>
 
 </xs:schema>
