@@ -1,46 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsd:schema
-    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
     targetNamespace="http://kuan.studio/taskflow/1.0"
     xmlns="http://kuan.studio/taskflow/1.0"
     elementFormDefault="qualified"
     attributeFormDefault="unqualified">
 
-    <xsd:simpleType name="taskType">
-        <xsd:restriction base="xsd:string">
-            <xsd:enumeration value="setVar"/>
-            <xsd:enumeration value="log"/>
-            <xsd:enumeration value="branch"/>
-            <xsd:enumeration value="end"/>
-        </xsd:restriction>
-    </xsd:simpleType>
+    <xs:element name="workflow" type="WorkflowType"/>
 
-    <xsd:element name="workflow">
-        <xsd:complexType>
-            <xsd:sequence>
-                <xsd:element name="task" minOccurs="1" maxOccurs="unbounded">
-                    <xsd:complexType>
-                        <xsd:attribute name="id" type="xsd:string" use="required"/>
-                        <xsd:attribute name="type" type="taskType" use="required"/>
+    <xs:complexType name="WorkflowType">
+        <xs:sequence>
+            <xs:element name="task" type="TaskType" minOccurs="1" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attribute name="id" type="xs:string" use="optional"/>
+    </xs:complexType>
 
-                        <!-- setVar -->
-                        <xsd:attribute name="key" type="xsd:string" use="optional"/>
-                        <xsd:attribute name="value" type="xsd:string" use="optional"/>
+    <xs:simpleType name="TaskTypeEnum">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="setVar"/>
+            <xs:enumeration value="log"/>
+            <xs:enumeration value="branch"/>
+            <xs:enumeration value="choice"/>
+            <xs:enumeration value="end"/>
+        </xs:restriction>
+    </xs:simpleType>
 
-                        <!-- log -->
-                        <xsd:attribute name="message" type="xsd:string" use="optional"/>
+    <xs:complexType name="TaskType">
+        <xs:attribute name="id" type="xs:string" use="required"/>
+        <xs:attribute name="type" type="TaskTypeEnum" use="required"/>
 
-                        <!-- branch -->
-                        <xsd:attribute name="ifEqualsKey" type="xsd:string" use="optional"/>
-                        <xsd:attribute name="ifEqualsValue" type="xsd:string" use="optional"/>
-                        <xsd:attribute name="thenGo" type="xsd:string" use="optional"/>
-                        <xsd:attribute name="elseGo" type="xsd:string" use="optional"/>
-                    </xsd:complexType>
-                </xsd:element>
-            </xsd:sequence>
+        <!-- setVar -->
+        <xs:attribute name="key" type="xs:string" use="optional"/>
+        <xs:attribute name="value" type="xs:string" use="optional"/>
 
-            <xsd:attribute name="id" type="xsd:string" use="required"/>
-        </xsd:complexType>
-    </xsd:element>
+        <!-- log -->
+        <xs:attribute name="message" type="xs:string" use="optional"/>
 
-</xsd:schema>
+        <!-- branch -->
+        <xs:attribute name="ifEqualsKey" type="xs:string" use="optional"/>
+        <xs:attribute name="ifEqualsValue" type="xs:string" use="optional"/>
+        <xs:attribute name="thenGo" type="xs:string" use="optional"/>
+        <xs:attribute name="elseGo" type="xs:string" use="optional"/>
+
+        <!-- choice -->
+        <xs:attribute name="prompt" type="xs:string" use="optional"/>
+        <xs:attribute name="optionA" type="xs:string" use="optional"/>
+        <xs:attribute name="valueA" type="xs:string" use="optional"/>
+        <xs:attribute name="optionB" type="xs:string" use="optional"/>
+        <xs:attribute name="valueB" type="xs:string" use="optional"/>
+
+    </xs:complexType>
+
+</xs:schema>

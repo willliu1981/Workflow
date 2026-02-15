@@ -1,106 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<workflow id="elder_quest_5_stages" xmlns="http://kuan.studio/taskflow/1.0">
+<workflow id="五關：山林試煉" xmlns="http://kuan.studio/taskflow/1.0">
 
-    <!-- 前置 -->
     <task id="p1" type="setVar" key="player" value="Kuanwei"/>
-    <task id="p2" type="log" message="[Prologue] ${player} enters a foggy forest."/>
+    <task id="p2" type="log" message="【序章】${player} 走進迷霧山林，天色陰沉。"/>
 
-    <!-- Stage 1：遇到老人（選擇 1） -->
-    <task id="s1_1" type="log" message="[Stage 1] An old man asks for help on the roadside."/>
+    <!-- 第 1 關：老人 -->
+    <task id="s1_1" type="log" message="【第一關】路邊有位老人抱著受傷的小狗，向你求助。"/>
     <task id="s1_2" type="choice"
         key="helpElder"
-        prompt="Do you help the old man?"
-        optionA="Help him" valueA="yes"
-        optionB="Ignore him" valueB="no"/>
+        prompt="你要幫助老人嗎？"
+        optionA="幫助他" valueA="yes"
+        optionB="假裝沒看到" valueB="no"/>
     <task id="s1_3" type="branch"
         ifEqualsKey="helpElder" ifEqualsValue="yes"
-        thenGo="s1_good_1" elseGo="s1_bad_1"/>
+        thenGo="s1_yes_1" elseGo="s1_no_1"/>
 
-    <task id="s1_good_1" type="log" message="[Stage 1] He gives you a small bronze key."/>
-    <task id="s1_good_2" type="setVar" key="hasKey" value="true"/>
-    <task id="s1_good_3" type="log" message="[Stage 1] He whispers: 'Kindness opens stone.'"/>
+    <task id="s1_yes_1" type="log" message="【第一關】老人感激地遞給你一把銅鑰匙。"/>
+    <task id="s1_yes_2" type="setVar" key="hasKey" value="true"/>
 
-    <task id="s1_bad_1" type="log" message="[Stage 1] You walk away. The fog becomes heavier."/>
-    <task id="s1_bad_2" type="setVar" key="hasKey" value="false"/>
-    <task id="s1_bad_3" type="log" message="[Stage 1] You hear a distant bell..."/>
+    <task id="s1_no_1" type="log" message="【第一關】你轉身離開，霧更濃了。"/>
+    <task id="s1_no_2" type="setVar" key="hasKey" value="false"/>
 
-    <!-- Stage 2：洞穴（選擇 2） -->
-    <task id="s2_1" type="log" message="[Stage 2] A cave blocks your path. Two tunnels appear."/>
+    <!-- 第 2 關：洞穴 -->
+    <task id="s2_1" type="log" message="【第二關】洞穴入口出現兩條路：左邊陰冷、右邊有暖風。"/>
     <task id="s2_2" type="choice"
         key="caveRoute"
-        prompt="Which tunnel do you take?"
-        optionA="Left tunnel (quiet)" valueA="left"
-        optionB="Right tunnel (warm wind)" valueB="right"/>
+        prompt="你選哪一條路？"
+        optionA="走左邊（陰冷）" valueA="left"
+        optionB="走右邊（暖風）" valueB="right"/>
     <task id="s2_3" type="branch"
         ifEqualsKey="caveRoute" ifEqualsValue="left"
         thenGo="s2_left_1" elseGo="s2_right_1"/>
 
-    <task id="s2_left_1" type="log" message="[Stage 2] You find ancient carvings. You learn a clue: 'WATER'."/>
-    <task id="s2_left_2" type="setVar" key="clueWord" value="WATER"/>
+    <task id="s2_left_1" type="log" message="【第二關】你在岩壁上看到刻字：『水』。"/>
+    <task id="s2_left_2" type="setVar" key="clue" value="水"/>
 
-    <task id="s2_right_1" type="log" message="[Stage 2] You avoid bats but slip. You lose time."/>
-    <task id="s2_right_2" type="setVar" key="clueWord" value=""/>
+    <task id="s2_right_1" type="log" message="【第二關】你躲過蝙蝠群，但沒找到任何線索。"/>
+    <task id="s2_right_2" type="setVar" key="clue" value=""/>
 
-    <!-- Stage 3：河谷（選擇 3） -->
-    <task id="s3_1" type="log" message="[Stage 3] A river blocks the road. There is a boat and a broken bridge."/>
+    <!-- 第 3 關：河谷 -->
+    <task id="s3_1" type="log" message="【第三關】河谷阻路：一艘小船與一座斷橋。"/>
     <task id="s3_2" type="choice"
-        key="riverChoice"
-        prompt="How do you cross the river?"
-        optionA="Use the boat" valueA="boat"
-        optionB="Try the broken bridge" valueB="bridge"/>
+        key="river"
+        prompt="你要怎麼過河？"
+        optionA="坐小船" valueA="boat"
+        optionB="走斷橋" valueB="bridge"/>
     <task id="s3_3" type="branch"
-        ifEqualsKey="riverChoice" ifEqualsValue="boat"
+        ifEqualsKey="river" ifEqualsValue="boat"
         thenGo="s3_boat_1" elseGo="s3_bridge_1"/>
 
-    <task id="s3_boat_1" type="log" message="[Stage 3] The boat is stable. You cross safely."/>
-    <task id="s3_boat_2" type="setVar" key="isInjured" value="false"/>
+    <task id="s3_boat_1" type="log" message="【第三關】你平安過河。"/>
+    <task id="s3_boat_2" type="setVar" key="injured" value="false"/>
 
-    <task id="s3_bridge_1" type="log" message="[Stage 3] The bridge collapses. You get hurt but survive."/>
-    <task id="s3_bridge_2" type="setVar" key="isInjured" value="true"/>
+    <task id="s3_bridge_1" type="log" message="【第三關】你摔了一跤但勉強過河。"/>
+    <task id="s3_bridge_2" type="setVar" key="injured" value="true"/>
 
-    <!-- Stage 4：石門（選擇 4，但會受 hasKey 影響） -->
-    <task id="s4_1" type="log" message="[Stage 4] A stone gate asks: 'Show me your proof'."/>
+    <!-- 第 4 關：石門 -->
+    <task id="s4_1" type="log" message="【第四關】石門寫著：『以證入門』。"/>
     <task id="s4_2" type="branch"
         ifEqualsKey="hasKey" ifEqualsValue="true"
         thenGo="s4_key_1" elseGo="s4_noKey_1"/>
 
-    <task id="s4_key_1" type="log" message="[Stage 4] You have the bronze key. The gate allows a secret shortcut."/>
+    <task id="s4_key_1" type="log" message="【第四關】你拿出銅鑰匙，石門出現暗格。"/>
     <task id="s4_key_2" type="choice"
         key="gateChoice"
-        prompt="Do you use the key to open the secret shortcut?"
-        optionA="Use the key" valueA="use_key"
-        optionB="Save the key" valueB="save_key"/>
+        prompt="你要怎麼做？"
+        optionA="用鑰匙開暗格" valueA="use_key"
+        optionB="先保留鑰匙" valueB="save_key"/>
 
-    <task id="s4_noKey_1" type="log" message="[Stage 4] You have no key. You must answer a riddle."/>
+    <task id="s4_noKey_1" type="log" message="【第四關】你沒有鑰匙，石門要求你回答洞穴刻字。"/>
     <task id="s4_noKey_2" type="choice"
         key="gateChoice"
-        prompt="The gate asks: 'What word was carved in the cave?'"
-        optionA="WATER" valueA="answer_water"
-        optionB="FIRE" valueB="answer_fire"/>
+        prompt="洞穴刻字是什麼？"
+        optionA="水" valueA="answer_water"
+        optionB="火" valueB="answer_fire"/>
 
-    <!-- Stage 5：結局（依 gateChoice + isInjured 走向不同 ending） -->
-    <task id="s5_1" type="log" message="[Stage 5] Final path begins..."/>
+    <!-- 第 5 關：結局 -->
+    <task id="s5_1" type="log" message="【第五關】你踏入最後的迷霧深處……"/>
     <task id="s5_2" type="branch"
         ifEqualsKey="gateChoice" ifEqualsValue="use_key"
-        thenGo="ending_good_1" elseGo="s5_check_answer_1"/>
+        thenGo="end_good_1" elseGo="s5_check_1"/>
 
-    <task id="s5_check_answer_1" type="branch"
+    <task id="s5_check_1" type="branch"
         ifEqualsKey="gateChoice" ifEqualsValue="answer_water"
-        thenGo="ending_good_1" elseGo="ending_bad_1"/>
+        thenGo="end_good_1" elseGo="end_bad_1"/>
 
-    <task id="ending_good_1" type="log" message="[Ending] The gate opens. You reach the village."/>
-    <task id="ending_good_2" type="branch"
-        ifEqualsKey="isInjured" ifEqualsValue="true"
-        thenGo="ending_good_injured_1" elseGo="ending_good_clean_1"/>
+    <task id="end_good_1" type="log" message="【結局】石門開啟，你看見村莊燈火。"/>
+    <task id="end_good_2" type="branch"
+        ifEqualsKey="injured" ifEqualsValue="true"
+        thenGo="end_good_injured_1" elseGo="end_good_clean_1"/>
 
-    <task id="ending_good_clean_1" type="log" message="[Ending] Perfect run. You unlock: 'Forest Explorer'."/>
-    <task id="ending_good_clean_2" type="end"/>
+    <task id="end_good_clean_1" type="log" message="【結局】完美通關：你毫髮無傷，獲得『山林行者』稱號。"/>
+    <task id="end_good_clean_2" type="end"/>
 
-    <task id="ending_good_injured_1" type="log" message="[Ending] You made it, but injured. You unlock: 'Survivor'."/>
-    <task id="ending_good_injured_2" type="end"/>
+    <task id="end_good_injured_1" type="log" message="【結局】你帶傷抵達，但仍成功：獲得『倖存者』稱號。"/>
+    <task id="end_good_injured_2" type="end"/>
 
-    <task id="ending_bad_1" type="log" message="[Ending] The gate rejects you. Monsters surround the area."/>
-    <task id="ending_bad_2" type="log" message="[Ending] You retreat. Try different choices next time."/>
-    <task id="ending_bad_3" type="end"/>
+    <task id="end_bad_1" type="log" message="【結局】石門拒絕你，你在迷霧中繞回原點。"/>
+    <task id="end_bad_2" type="log" message="【結局】下次再來——也許選擇會不一樣。"/>
+    <task id="end_bad_3" type="end"/>
 
 </workflow>
