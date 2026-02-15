@@ -1,14 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<workflow id="demo" xmlns="http://kuan.studio/taskflow/1.0">
-    <task id="t1" type="setVar" key="user" value="Kuanwei"/>
-    <task id="t2" type="log" message="Hello, ${user}! Start workflow."/>
-    <task id="t3" type="branch"
-        ifEqualsKey="user" ifEqualsValue="Kuanwei"
-        thenGo="vip1" elseGo="normal1"/>
+<workflow id="五關：山林試煉" xmlns="http://kuan.studio/taskflow/1.0">
 
-    <task id="vip1" type="log" message="VIP: Today extra practice: ${user}."/>
-    <task id="vip2" type="end"/>
+    <task id="p1" type="setVar" key="player" value="Kuanwei"/>
+    <task id="p2" type="log" message="【序章】${player} 走進迷霧山林，天色陰沉。"/>
 
-    <task id="normal1" type="log" message="Normal: Do standard practice."/>
-    <task id="normal2" type="end"/>
+    <!-- 第一關：老人（補上 choice，否則 helpElder 永遠為 null） -->
+    <task id="s1_1" type="log" message="【第一關】路邊有位老人抱著受傷的小狗，向你求助。"/>
+    <task id="s1_2" type="choice"
+        key="helpElder"
+        prompt="你要幫助老人嗎？"
+        optionA="幫助他" valueA="yes"
+        optionB="假裝沒看到" valueB="no"/>
+    <task id="s1_3" type="branch"
+        ifEqualsKey="helpElder" ifEqualsValue="yes"
+        thenGo="s1_yes_1" elseGo="s1_no_1"/>
+
+    <task id="s1_yes_1" type="log" message="【第一關】老人感激地遞給你一把銅鑰匙。"/>
+    <task id="s1_yes_2" type="setVar" key="hasKey" value="true"/>
+    <task id="s1_yes_3" type="goto" go="s2_1"/>
+
+    <task id="s1_no_1" type="log" message="【第一關】你轉身離開，霧更濃了。"/>
+    <task id="s1_no_2" type="setVar" key="hasKey" value="false"/>
+    <task id="s1_no_3" type="goto" go="s2_1"/>
+
+    <!-- 第二關：洞穴（左右分支最後要 goto 匯合，否則會串線） -->
+    <task id="s2_1" type="log" message="【第二關】洞穴入口出現兩條路：左邊陰冷、右邊有暖風。"/>
+    <task id="s2_2" type="choice"
+        key="caveRoute"
+        prompt="你選哪一條路？"
+        optionA="走左邊（陰冷）" valueA="left"
+        optionB="走右邊（暖風）" valueB="right"/>
+    <task id="s2_3" type="branch"
+        ifEqualsKey="caveRoute" ifEqualsValue="left"
+        thenGo="s2_left_1" elseGo="s2_right_1"/>
+
+    <task id="s2_left_1" type="log" message="【第二關】你在岩壁上看到刻字：『水』。"/>
+    <task id="s2_left_2" type="setVar" key="clue" value="水"/>
+    <task id="s2_left_3" type="goto" go="s3_1"/>
+
+    <task id="s2_right_1" type="log" message="【第二關】你躲過蝙蝠群，但沒找到任何線索。"/>
+    <task id="s2_right_2" type="setVar" key="clue" value=""/>
+    <task id="s2_right_3" type="goto" go="s3_1"/>
+
+    <!-- 第三關：河谷（船/橋分支最後要 goto 匯合） -->
+    <task id="s3_1" type="log" message="【第三關】河谷阻路：一艘小船與一座斷橋。"/>
+    <task id="s3_2" type="choice"
+        key="river"
+        prompt="你要怎麼過河？"
+        optionA="坐小船" valueA="boat"
+        optionB="走斷橋" valueB="bridge"/>
+    <task id="s3_3" type="branch"
+        ifEqualsKey="river" ifEqualsValue="boat"
+        thenGo="s3_boat_1" elseGo="s3_bridge_1"/>
+
+    <task id="s3_boat_1" type="log" message="【第三關】你平安過河。"/>
+    <task id="s3_boat_2" type="setVar" key="injured" value="false"/>
+    <task id="s3_boat_3" type="goto" go="s4_1"/>
+
+    <task id="s3_bridge_1" type="log" message="【第三關】你摔了一跤但勉強過河。"/>
+    <task id="s3_bridge_2" type="setVar" key="injured" value="true"/>
+    <task id="s3_bridge_3" type="goto" go="s4_1"/>
+
+    <!-- 第四關：石門（保留你的設計，但補上 s4_1，並確保分支後會 goto 到 s5_1） -->
+    <task id="s4_1" type="log" message="【第四關】石門寫著：『以證入門』。"/>
+    <task id="s4_2" type="branch"
+        ifEqualsKey="hasKey" ifEqualsValue="true"
+        thenGo="s4_key_1" elseGo="s4_noKey_1"/>
+
+    <task id="s4_key_1" type="log" message="【第四關】你拿出銅鑰匙，石門出現暗格。"/>
+    <task id="s4_key_2" type="choice"
+        key="gateChoice"
+        prompt="你要怎麼做？"
+        optionA="用鑰匙開暗格" valueA="use_key"
+        optionB="先保留鑰匙" valueB="save_key"/>
+    <task id="s4_key_3" type="goto" go="s5_1"/>
+
+    <task id="s4_noKey_1" type="log" message="【第四關】你沒有鑰匙，石門要求你回答洞穴刻字。"/>
+    <task id="s4_noKey_2" type="choice"
+        key="gateChoice"
+        prompt="洞穴刻字是什麼？"
+        optionA="水" valueA="answer_water"
+        optionB="火" valueB="answer_fire"/>
+    <task id="s4_noKey_3" type="goto" go="s5_1"/>
+
+    <!-- 第五關：結局 -->
+    <task id="s5_1" type="log" message="【第五關】你踏入最後的迷霧深處……"/>
+    <task id="s5_2" type="branch"
+        ifEqualsKey="gateChoice" ifEqualsValue="use_key"
+        thenGo="end_good_1" elseGo="s5_check_1"/>
+
+    <task id="s5_check_1" type="branch"
+        ifEqualsKey="gateChoice" ifEqualsValue="answer_water"
+        thenGo="end_good_1" elseGo="end_bad_1"/>
+
+    <task id="end_good_1" type="log" message="【結局】石門開啟，你看見村莊燈火。"/>
+    <task id="end_good_2" type="branch"
+        ifEqualsKey="injured" ifEqualsValue="true"
+        thenGo="end_good_injured_1" elseGo="end_good_clean_1"/>
+
+    <task id="end_good_clean_1" type="log" message="【結局】完美通關：你毫髮無傷，獲得『山林行者』稱號。"/>
+    <task id="end_good_clean_2" type="end"/>
+
+    <task id="end_good_injured_1" type="log" message="【結局】你帶傷抵達，但仍成功：獲得『倖存者』稱號。"/>
+    <task id="end_good_injured_2" type="end"/>
+
+    <task id="end_bad_1" type="log" message="【結局】石門拒絕你，你在迷霧中繞回原點。"/>
+    <task id="end_bad_2" type="log" message="【結局】下次再來——也許選擇會不一樣。"/>
+    <task id="end_bad_3" type="end"/>
+
 </workflow>

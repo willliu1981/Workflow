@@ -21,7 +21,7 @@ import java.util.Scanner;
 public class TaskFlowInteractiveExample {
 
     public static void main(String[] args) {
-        String workflowXmlResourcePath = "xml/task2.xml";
+        String workflowXmlResourcePath = "xml/task1.xml";
         ValidationMode validationMode = ValidationMode.FAIL_FAST;
 
         Workflow workflow = WorkflowLoader.loadFromResources(workflowXmlResourcePath, validationMode);
