@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <workflow id="任務A：山林試煉" xmlns="http://kuan.studio/taskflow/1.0">
+
+      <task id="a1" type="log" message="【任務A】你在山路遇到老人，他想請你幫忙找回走失的小狗。"/>
+      <task id="a2" type="choice"
+            key="helpElder"
+            prompt="你要幫助老人嗎？"
+            optionA="幫助他" valueA="yes"
+            optionB="不理他" valueB="no"/>
+      <task id="a3" type="branch"
+            ifEqualsKey="helpElder" ifEqualsValue="yes"
+            thenGo="a_yes_1" elseGo="a_no_1"/>
+
+      <task id="a_yes_1" type="log" message="【任務A】你花了半小時找回小狗，老人非常感謝你。"/>
+      <task id="a_yes_2" type="effect" effect="addGold" amount="30"/>
+      <task id="a_yes_3" type="effect" effect="setFlag" key="questA_done" value="true"/>
+      <task id="a_yes_4" type="log" message="【任務A】你獲得 30 金幣，並解鎖任務B。"/>
+      <task id="a_yes_5" type="end"/>
+
+      <task id="a_no_1" type="log" message="【任務A】你選擇離開。山林霧氣更重，前路不明。"/>
+      <task id="a_no_2" type="effect" effect="setFlag" key="questA_done" value="false"/>
+      <task id="a_no_3" type="end"/>
+
+  </workflow>

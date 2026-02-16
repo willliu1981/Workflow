@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow id="任務B：石門之謎" xmlns="http://kuan.studio/taskflow/1.0">
+
+    <!-- 先檢查前置條件：questA_done 必須為 true -->
+    <task id="b0" type="log" message="【任務B】你來到石門前，石門上有古老刻印。" />
+    <task id="b1" type="branch" ifEqualsKey="questA_done" ifEqualsValue="true" thenGo="b_ok_1" elseGo="b_block_1" />
+
+    <task id="b_block_1" type="log" message="【任務B】石門沒有反應。你似乎還沒有取得進入資格（先完成任務A）。" />
+    <task id="b_block_2" type="end" />
+
+    <task id="b_ok_1" type="log" message="【任務B】石門浮現一道光，像是在確認你的『善意』。" />
+    <task id="b_ok_2" type="choice" key="doorAnswer" prompt="刻印寫著：『以心證之』。你要怎麼做？" optionA="把金幣放到凹槽"
+        valueA="pay" optionB="誠實說明來意" valueB="truth" />
+    <task id="b_ok_3" type="branch" ifEqualsKey="doorAnswer" ifEqualsValue="truth" thenGo="b_good_1" elseGo="b_pay_1" />
+
+    <task id="b_good_1" type="log" message="【任務B】石門開啟。你得到『山林行者』稱號。" />
+    <task id="b_good_2" type="effect" effect="grantTitle" key="title" value="山林行者" />
+    <task id="b_good_3" type="end" />
+
+    <task id="b_pay_1" type="log" message="【任務B】你投下金幣，石門收下後打開，但你覺得哪裡怪怪的。" />
+    <task id="b_pay_2" type="effect" effect="addGold" amount="-10" />
+    <task id="b_pay_3" type="end" />
+
+</workflow>
