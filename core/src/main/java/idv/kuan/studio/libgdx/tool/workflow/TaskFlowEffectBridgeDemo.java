@@ -21,30 +21,42 @@ import java.util.Objects;
 import java.util.Scanner;
 
 /**
- * 第二版（與第一版區隔）：TaskFlowConsoleDemoV2
- * <p>
- * 特色：
- * - choice + effect（橋接到遊戲 / GameControl 的副作用出口）
- * - 同一個 main 先跑任務 A，再跑任務 B
- * - 兩個 workflow 共用同一個 VariableStore → 可測到「B 是否拿到 A 的結果」
+ * TaskFlowEffectBridgeDemo（第二版示範：effect bridge）
+ *
+ * 教學目標：
+ * 1) 讓 workflow 不只做「顯示效果」（log/choice），還能觸發「實際 App 行為」
+ *    例如：獲得金幣、設定旗標、授與稱號、更新 GameControl 狀態。
+ *
+ * 2) 示範「任務 A → 任務 B」的依賴關係：
+ *    B 任務需要 A 任務的結果（例如 questA_done=true）才能進行。
+ *
+ * 關鍵設計：
+ * - VariableStore：workflow 的狀態儲存區（變數表）
+ * - EffectHandler：副作用橋接出口（真正的 App/遊戲行為由這裡執行）
+ * - 共享 VariableStore：同一個 main 連續跑 A→B，就能保證 B 讀得到 A 寫入的結果
  */
 public class TaskFlowEffectBridgeDemo {
 
     public static void main(String[] args) {
         ValidationMode validationMode = ValidationMode.FAIL_FAST;
 
+        // choice 的呈現方式（Console / LibGDX / Android）由 Presenter 決定
         ChoicePresenter choicePresenter = new ConsoleChoicePresenter();
 
-        // 關鍵：共用同一份變數（之後你可替換成 FileVariableStore 做持久化）
+        // 教學重點：共享同一份 VariableStore，才能把 A 的結果「帶到」B
+        // 若你改成 FileVariableStore，則可以跨 App 重啟持續保留狀態（持久化）。
         VariableStore sharedVariableStore = new MapVariableStore();
 
-        // 副作用出口：之後換成呼叫 GameController / GameControl 就接軌了
+        // 教學重點：副作用橋接出口。
+        // workflow 只描述「要做什麼 effect」，真正執行由 EffectHandler 決定。
+        // 未來你直接把 DemoGameEffectHandler 換成呼叫 GameControl / GameController 即可。
         EffectHandler effectHandler = new DemoGameEffectHandler();
 
-        // 1) 跑任務 A：寫入 questA_done / gold / 其他旗標
+        // 1) 跑任務 A：在 XML 中可能會 setVar / effect，寫入 questA_done / gold / 旗標等
         Workflow workflowA = WorkflowLoader.loadFromResources("xml/taskA.xml", validationMode);
         workflowA.run(choicePresenter, effectHandler, sharedVariableStore);
 
+        // 顯示一下目前狀態（教學用）
         System.out.println();
         System.out.println("==================================================");
         System.out.println("[Debug] After TaskA variables snapshot:");
@@ -52,7 +64,8 @@ public class TaskFlowEffectBridgeDemo {
         System.out.println("==================================================");
         System.out.println();
 
-        // 2) 直接跑任務 B：讀取 questA_done 來決定能不能進行
+        // 2) 跑任務 B：依賴 A 寫入的狀態，例如：
+        // <task type="branch" ifEqualsKey="questA_done" ifEqualsValue="true" .../>
         Workflow workflowB = WorkflowLoader.loadFromResources("xml/taskB.xml", validationMode);
         workflowB.run(choicePresenter, effectHandler, sharedVariableStore);
 
@@ -63,6 +76,9 @@ public class TaskFlowEffectBridgeDemo {
         System.out.println("==================================================");
     }
 
+    /**
+     * 教學用：把 VariableStore 的狀態印出來
+     */
     private static void printSnapshot(VariableStore variableStore) {
         Map<String, String> snapshot = variableStore.snapshot();
         if (snapshot.isEmpty()) {
@@ -74,12 +90,22 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * ValidationMode 用於控制 XSD 驗證策略：
+     * - NONE：不驗證（最快，但可能跑到一半才爆）
+     * - WARN_ONLY：驗證錯誤只印警告（適合開發期快速迭代）
+     * - FAIL_FAST：驗證錯誤直接中止（適合發佈或嚴格資料品質）
+     */
     public enum ValidationMode {
         NONE,
         WARN_ONLY,
         FAIL_FAST
     }
 
+    /**
+     * ChoicePresenter：把「選擇題 UI」抽象化
+     * Console 只是其中一種實作；未來可用 LibGDX/Android UI 取代。
+     */
     public interface ChoicePresenter {
         void showTwoOptions(
             String prompt,
@@ -91,10 +117,18 @@ public class TaskFlowEffectBridgeDemo {
         );
     }
 
+    /**
+     * ChoiceCallback：用來回傳使用者選擇結果（把 value 寫入 VariableStore）
+     */
     public interface ChoiceCallback {
         void onChosen(String chosenValue);
     }
 
+    /**
+     * ConsoleChoicePresenter：Console 互動版
+     * - 顯示兩個選項
+     * - 輸入 1/2 決定結果
+     */
     public static final class ConsoleChoicePresenter implements ChoicePresenter {
 
         private final Scanner scanner;
@@ -132,14 +166,22 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * VariableStore：workflow 執行時的 state（變數表）
+     *
+     * 教學重點：
+     * - workflow A、B 共用同一份 VariableStore → 才能做跨 workflow 的依賴測試
+     * - 若要跨程式重啟共享 → 改成 FileVariableStore / DBVariableStore
+     */
     public interface VariableStore {
         String get(String key);
-
         void put(String key, String value);
-
         Map<String, String> snapshot();
     }
 
+    /**
+     * MapVariableStore：最小實作（純記憶體，不持久化）
+     */
     public static final class MapVariableStore implements VariableStore {
 
         private final Map<String, String> variables;
@@ -167,17 +209,27 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * EffectHandler：副作用橋接出口（最重要的接軌點）
+     *
+     * 觀念：
+     * - DSL 只描述「觸發什麼 effect + 參數」
+     * - 真正行為由 EffectHandler 執行（例如加金幣、更新 GameControl、送獎勵）
+     *
+     * 好處：
+     * - workflow 引擎維持純資料流程（可重用）
+     * - App/遊戲決定 effect 的實作（可替換）
+     */
     public interface EffectHandler {
         void handle(String effectName, Map<String, String> parameters, VariableStore variableStore);
     }
 
     /**
-     * Demo 用副作用橋接：你之後把這裡改成呼叫 GameController / GameControl 即可。
-     * <p>
-     * 目前支援：
-     * - addGold amount="30" 或 "-10"
-     * - setFlag key="questA_done" value="true/false"
-     * - grantTitle value="山林行者"
+     * DemoGameEffectHandler：示範版 effect 實作
+     *
+     * 你未來要接 App：
+     * - 把這裡的 switch case 改成呼叫 GameControl / GameController
+     * - 或者做一層 Adapter，把 effectName 映射到你既有的 use-case/service
      */
     public static final class DemoGameEffectHandler implements EffectHandler {
 
@@ -192,6 +244,7 @@ public class TaskFlowEffectBridgeDemo {
             switch (effectName) {
 
                 case "addGold": {
+                    // 例：<task type="effect" effect="addGold" amount="30"/>
                     int deltaGold = parseIntOrDefault(parameters.get("amount"), 0);
                     int currentGold = parseIntOrDefault(variableStore.get("gold"), 0);
                     int nextGold = currentGold + deltaGold;
@@ -201,6 +254,7 @@ public class TaskFlowEffectBridgeDemo {
                 }
 
                 case "setFlag": {
+                    // 例：<task type="effect" effect="setFlag" key="questA_done" value="true"/>
                     String flagKey = parameters.get("key");
                     String flagValue = parameters.get("value");
                     if (flagKey == null || flagKey.isBlank()) {
@@ -212,6 +266,7 @@ public class TaskFlowEffectBridgeDemo {
                 }
 
                 case "grantTitle": {
+                    // 例：<task type="effect" effect="grantTitle" value="山林行者"/>
                     String titleValue = parameters.get("value");
                     variableStore.put("player_title", titleValue);
                     System.out.println("[Effect] grantTitle: " + titleValue);
@@ -236,6 +291,13 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * WorkflowLoader：負責載入 XML +（可選）XSD 驗證
+     *
+     * 教學重點：
+     * - XSD 驗證在「載入期」就擋掉 DSL 錯誤，避免跑到一半才爆
+     * - 使用 namespace 時，讀取 root/task 需注意 localName / getElementsByTagNameNS
+     */
     public static final class WorkflowLoader {
 
         private static final String XSD_RESOURCE_PATH = "workflow.xsd";
@@ -254,7 +316,7 @@ public class TaskFlowEffectBridgeDemo {
                 throw new IllegalArgumentException("XML root is null: " + xmlResourcePath);
             }
 
-            // 有 namespace 時要用 localName 才準；沒有則 tagName
+            // 教學：有 namespace 時要用 localName 才準；沒有則 tagName
             String rootName = rootElement.getLocalName() != null ? rootElement.getLocalName() : rootElement.getTagName();
             if (!"workflow".equals(rootName)) {
                 throw new IllegalArgumentException("Root must be <workflow>, but got: <" + rootElement.getTagName() + ">");
@@ -265,6 +327,7 @@ public class TaskFlowEffectBridgeDemo {
             List<TaskDefinition> taskOrderList = new ArrayList<>();
             Map<String, TaskDefinition> taskByIdMap = new LinkedHashMap<>();
 
+            // 教學：同時支援有/無 namespace 的 task 搜尋
             NodeList taskNodeList = rootElement.getElementsByTagNameNS("*", "task");
             if (taskNodeList.getLength() == 0) {
                 taskNodeList = rootElement.getElementsByTagName("task");
@@ -369,6 +432,14 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * Workflow：流程執行器
+     *
+     * 教學重點：
+     * - 預設順序向下執行（下一個 task）
+     * - branch/goto/end 改變流程走向
+     * - effect 交給 EffectHandler（橋接到 App/遊戲）
+     */
     public static final class Workflow {
 
         private final String id;
@@ -419,18 +490,20 @@ public class TaskFlowEffectBridgeDemo {
             switch (taskDefinition.type) {
 
                 case "setVar": {
+                    // setVar：寫入 workflow state
                     requireNonBlank(taskDefinition.key, "setVar requires key, taskId=" + taskDefinition.id);
                     variableStore.put(taskDefinition.key, interpolate(taskDefinition.value, variableStore));
                     return ExecutionResult.next(getNextSequentialTaskId(taskDefinition.id));
                 }
 
                 case "log": {
+                    // log：只輸出，不改變流程（走下一個 task）
                     String message = taskDefinition.message == null ? "" : taskDefinition.message;
-                    System.out.println("[TaskFlow] " + interpolate(message, variableStore));
                     return ExecutionResult.next(getNextSequentialTaskId(taskDefinition.id));
                 }
 
                 case "choice": {
+                    // choice：顯示 2 選 1 → 將選擇結果寫入 VariableStore
                     requireNonBlank(taskDefinition.key, "choice requires key, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.prompt, "choice requires prompt, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.optionAText, "choice requires optionA, taskId=" + taskDefinition.id);
@@ -455,6 +528,7 @@ public class TaskFlowEffectBridgeDemo {
                 }
 
                 case "branch": {
+                    // branch：根據 VariableStore 某個 key 的值，跳轉到 thenGo / elseGo
                     requireNonBlank(taskDefinition.ifEqualsKey, "branch requires ifEqualsKey, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.thenGo, "branch requires thenGo, taskId=" + taskDefinition.id);
                     requireNonBlank(taskDefinition.elseGo, "branch requires elseGo, taskId=" + taskDefinition.id);
@@ -466,16 +540,20 @@ public class TaskFlowEffectBridgeDemo {
                 }
 
                 case "goto": {
+                    // goto：無條件跳轉
                     requireNonBlank(taskDefinition.go, "goto requires go, taskId=" + taskDefinition.id);
                     return ExecutionResult.next(taskDefinition.go);
                 }
 
                 case "effect": {
+                    // effect：觸發副作用（例如加金幣、設旗標、更新 GameControl）
+                    // workflow 不直接做這些事，而是交給 EffectHandler（保持引擎純粹）
                     requireNonBlank(taskDefinition.effect, "effect requires effect, taskId=" + taskDefinition.id);
 
                     Map<String, String> parameters = new LinkedHashMap<>();
 
-                    // 這些欄位依你的 XSD/DSL 定義擴充即可
+                    // 教學：目前示範只放入 amount / key / value
+                    // 你要更通用，可改成讀取 <param> 子節點或 attributes 全打包
                     if (taskDefinition.amount != null) {
                         parameters.put("amount", interpolate(taskDefinition.amount, variableStore));
                     }
@@ -501,6 +579,9 @@ public class TaskFlowEffectBridgeDemo {
             }
         }
 
+        /**
+         * 插值：把 ${key} 換成 VariableStore 的值
+         */
         private String interpolate(String rawText, VariableStore variableStore) {
             if (rawText == null) {
                 return "";
@@ -517,6 +598,9 @@ public class TaskFlowEffectBridgeDemo {
             return resolvedText;
         }
 
+        /**
+         * 預設順序：如果沒有 branch/goto/end，就走下一個 task
+         */
         private String getNextSequentialTaskId(String currentTaskId) {
             for (int index = 0; index < taskOrderList.size(); index++) {
                 TaskDefinition taskDefinition = taskOrderList.get(index);
@@ -538,6 +622,9 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * ExecutionResult：目前只保留 nextTaskId（最小版）
+     */
     public static final class ExecutionResult {
 
         public final String nextTaskId;
@@ -555,6 +642,13 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
+    /**
+     * TaskDefinition：把 <task ...attributes.../> 映射成 Java 物件
+     *
+     * 教學重點：
+     * - 目前為「最小可用」：用 attributes 表達所有任務參數
+     * - 要更強可擴充：允許子節點（例如 <params><param .../></params>）
+     */
     public static final class TaskDefinition {
 
         public final String id;
