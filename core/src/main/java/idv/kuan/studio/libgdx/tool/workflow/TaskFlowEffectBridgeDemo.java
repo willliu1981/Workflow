@@ -1,6 +1,5 @@
 package idv.kuan.studio.libgdx.tool.workflow;
 
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -11,6 +10,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -21,30 +21,57 @@ import java.util.Objects;
 import java.util.Scanner;
 
 /**
- * 這版做了你要的「副作用橋接層」：
- * - Engine 只負責流程（choice/branch/goto/log/setVar）
- * - 真正影響遊戲（發獎勵、設 GameControl 狀態、寫存檔）走 EffectHandler
+ * 第二版（與第一版區隔）：TaskFlowConsoleDemoV2
+ * <p>
+ * 特色：
+ * - choice + effect（橋接到遊戲 / GameControl 的副作用出口）
+ * - 同一個 main 先跑任務 A，再跑任務 B
+ * - 兩個 workflow 共用同一個 VariableStore → 可測到「B 是否拿到 A 的結果」
  */
 public class TaskFlowEffectBridgeDemo {
 
     public static void main(String[] args) {
-        // 你可以切換 taskA.xml / taskB.xml 測試「前置條件」效果
-        String workflowXmlResourcePath = "xml/taskA.xml";
-        // String workflowXmlResourcePath = "xml/taskB.xml";
-
         ValidationMode validationMode = ValidationMode.FAIL_FAST;
-
-        Workflow workflow = WorkflowLoader.loadFromResources(workflowXmlResourcePath, validationMode);
 
         ChoicePresenter choicePresenter = new ConsoleChoicePresenter();
 
-        // 共享狀態：模擬 GameControl / 存檔 / Repo
-        VariableStore variableStore = new MapVariableStore();
+        // 關鍵：共用同一份變數（之後你可替換成 FileVariableStore 做持久化）
+        VariableStore sharedVariableStore = new MapVariableStore();
 
-        // 副作用出口：模擬接到遊戲（你未來可在這裡改呼叫 GameController）
-        EffectHandler effectHandler = new DemoGameEffectHandler(variableStore);
+        // 副作用出口：之後換成呼叫 GameController / GameControl 就接軌了
+        EffectHandler effectHandler = new DemoGameEffectHandler();
 
-        workflow.run(choicePresenter, effectHandler, variableStore);
+        // 1) 跑任務 A：寫入 questA_done / gold / 其他旗標
+        Workflow workflowA = WorkflowLoader.loadFromResources("xml/taskA.xml", validationMode);
+        workflowA.run(choicePresenter, effectHandler, sharedVariableStore);
+
+        System.out.println();
+        System.out.println("==================================================");
+        System.out.println("[Debug] After TaskA variables snapshot:");
+        printSnapshot(sharedVariableStore);
+        System.out.println("==================================================");
+        System.out.println();
+
+        // 2) 直接跑任務 B：讀取 questA_done 來決定能不能進行
+        Workflow workflowB = WorkflowLoader.loadFromResources("xml/taskB.xml", validationMode);
+        workflowB.run(choicePresenter, effectHandler, sharedVariableStore);
+
+        System.out.println();
+        System.out.println("==================================================");
+        System.out.println("[Debug] After TaskB variables snapshot:");
+        printSnapshot(sharedVariableStore);
+        System.out.println("==================================================");
+    }
+
+    private static void printSnapshot(VariableStore variableStore) {
+        Map<String, String> snapshot = variableStore.snapshot();
+        if (snapshot.isEmpty()) {
+            System.out.println("(empty)");
+            return;
+        }
+        for (Map.Entry<String, String> entry : snapshot.entrySet()) {
+            System.out.println(entry.getKey() + "=" + entry.getValue());
+        }
     }
 
     public enum ValidationMode {
@@ -105,13 +132,11 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
-    /**
-     * VariableStore：把 workflow variables 抽出來
-     * - 你未來要接 GameControl，就做一個 GameControlVariableStore 實作這個介面
-     */
     public interface VariableStore {
         String get(String key);
+
         void put(String key, String value);
+
         Map<String, String> snapshot();
     }
 
@@ -142,28 +167,24 @@ public class TaskFlowEffectBridgeDemo {
         }
     }
 
-    /**
-     * EffectHandler：副作用出口（獎勵、改狀態、呼叫 GameController）
-     * - Engine 只呼叫 handle，不知道遊戲怎麼做
-     */
     public interface EffectHandler {
         void handle(String effectName, Map<String, String> parameters, VariableStore variableStore);
     }
 
     /**
-     * Demo 用：假裝這裡就是你的 GameController / GameControl
-     * 你把 switch case 改成呼叫真正的 GameController 即可
+     * Demo 用副作用橋接：你之後把這裡改成呼叫 GameController / GameControl 即可。
+     * <p>
+     * 目前支援：
+     * - addGold amount="30" 或 "-10"
+     * - setFlag key="questA_done" value="true/false"
+     * - grantTitle value="山林行者"
      */
     public static final class DemoGameEffectHandler implements EffectHandler {
 
-        private final VariableStore variableStore;
-
-        public DemoGameEffectHandler(VariableStore variableStore) {
-            this.variableStore = Objects.requireNonNull(variableStore);
-        }
-
         @Override
         public void handle(String effectName, Map<String, String> parameters, VariableStore variableStore) {
+            Objects.requireNonNull(variableStore);
+
             if (effectName == null || effectName.isBlank()) {
                 throw new IllegalArgumentException("effectName is blank");
             }
@@ -172,9 +193,9 @@ public class TaskFlowEffectBridgeDemo {
 
                 case "addGold": {
                     int deltaGold = parseIntOrDefault(parameters.get("amount"), 0);
-                    int currentGold = parseIntOrDefault(this.variableStore.get("gold"), 0);
+                    int currentGold = parseIntOrDefault(variableStore.get("gold"), 0);
                     int nextGold = currentGold + deltaGold;
-                    this.variableStore.put("gold", String.valueOf(nextGold));
+                    variableStore.put("gold", String.valueOf(nextGold));
                     System.out.println("[Effect] addGold: " + deltaGold + ", now gold=" + nextGold);
                     break;
                 }
@@ -182,14 +203,17 @@ public class TaskFlowEffectBridgeDemo {
                 case "setFlag": {
                     String flagKey = parameters.get("key");
                     String flagValue = parameters.get("value");
-                    this.variableStore.put(flagKey, flagValue);
+                    if (flagKey == null || flagKey.isBlank()) {
+                        throw new IllegalArgumentException("setFlag requires key");
+                    }
+                    variableStore.put(flagKey, flagValue);
                     System.out.println("[Effect] setFlag: " + flagKey + "=" + flagValue);
                     break;
                 }
 
                 case "grantTitle": {
                     String titleValue = parameters.get("value");
-                    this.variableStore.put("player_title", titleValue);
+                    variableStore.put("player_title", titleValue);
                     System.out.println("[Effect] grantTitle: " + titleValue);
                     break;
                 }
@@ -229,8 +253,10 @@ public class TaskFlowEffectBridgeDemo {
             if (rootElement == null) {
                 throw new IllegalArgumentException("XML root is null: " + xmlResourcePath);
             }
-            if (!"workflow".equals(rootElement.getLocalName()) && !"workflow".equals(rootElement.getTagName())) {
-                // 有 namespace 時建議用 getLocalName
+
+            // 有 namespace 時要用 localName 才準；沒有則 tagName
+            String rootName = rootElement.getLocalName() != null ? rootElement.getLocalName() : rootElement.getTagName();
+            if (!"workflow".equals(rootName)) {
                 throw new IllegalArgumentException("Root must be <workflow>, but got: <" + rootElement.getTagName() + ">");
             }
 
@@ -241,7 +267,6 @@ public class TaskFlowEffectBridgeDemo {
 
             NodeList taskNodeList = rootElement.getElementsByTagNameNS("*", "task");
             if (taskNodeList.getLength() == 0) {
-                // 兼容沒有 namespace 的情況
                 taskNodeList = rootElement.getElementsByTagName("task");
             }
             if (taskNodeList.getLength() == 0) {
@@ -328,7 +353,7 @@ public class TaskFlowEffectBridgeDemo {
         }
 
         private static InputStream openResourceStream(String resourcePath) {
-            InputStream inputStream = TaskFlowInteractiveExample.class.getClassLoader().getResourceAsStream(resourcePath);
+            InputStream inputStream = TaskFlowEffectBridgeDemo.class.getClassLoader().getResourceAsStream(resourcePath);
             if (inputStream == null) {
                 throw new IllegalStateException("Resource not found in classpath: " + resourcePath);
             }
@@ -450,14 +475,9 @@ public class TaskFlowEffectBridgeDemo {
 
                     Map<String, String> parameters = new LinkedHashMap<>();
 
+                    // 這些欄位依你的 XSD/DSL 定義擴充即可
                     if (taskDefinition.amount != null) {
                         parameters.put("amount", interpolate(taskDefinition.amount, variableStore));
-                    }
-                    if (taskDefinition.itemId != null) {
-                        parameters.put("itemId", interpolate(taskDefinition.itemId, variableStore));
-                    }
-                    if (taskDefinition.count != null) {
-                        parameters.put("count", interpolate(taskDefinition.count, variableStore));
                     }
                     if (taskDefinition.key != null) {
                         parameters.put("key", interpolate(taskDefinition.key, variableStore));
@@ -560,8 +580,6 @@ public class TaskFlowEffectBridgeDemo {
 
         public final String effect;
         public final String amount;
-        public final String itemId;
-        public final String count;
 
         private TaskDefinition(
             String id,
@@ -580,9 +598,7 @@ public class TaskFlowEffectBridgeDemo {
             String optionBValue,
             String go,
             String effect,
-            String amount,
-            String itemId,
-            String count
+            String amount
         ) {
             this.id = id;
             this.type = type;
@@ -601,8 +617,6 @@ public class TaskFlowEffectBridgeDemo {
             this.go = go;
             this.effect = effect;
             this.amount = amount;
-            this.itemId = itemId;
-            this.count = count;
         }
 
         public static TaskDefinition from(Element taskElement) {
@@ -635,8 +649,6 @@ public class TaskFlowEffectBridgeDemo {
 
             String effect = getOptionalAttribute(taskElement, "effect");
             String amount = getOptionalAttribute(taskElement, "amount");
-            String itemId = getOptionalAttribute(taskElement, "itemId");
-            String count = getOptionalAttribute(taskElement, "count");
 
             return new TaskDefinition(
                 id,
@@ -655,9 +667,7 @@ public class TaskFlowEffectBridgeDemo {
                 valueB,
                 go,
                 effect,
-                amount,
-                itemId,
-                count
+                amount
             );
         }
 
